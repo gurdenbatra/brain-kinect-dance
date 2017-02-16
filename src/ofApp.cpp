@@ -67,13 +67,13 @@ void ofApp::setup(){
     grayThreshFar.allocate(kinect.width, kinect.height);
     
     nearThreshold = 230;
-    farThreshold = 70;
+    farThreshold = 110;
     bThreshWithOpenCV = true;
     
     ofSetFrameRate(60);
     
     // zero the tilt on startup
-    angle = 0;
+    angle = 4;
     kinect.setCameraTiltAngle(angle);
     
     // start from the front
@@ -184,6 +184,7 @@ void ofApp::update(){
         // find contours which are between the size of 20 pixels and 1/3 the w*h pixels.
         // also, find holes is set to true so we will get interior contours as well....
         contourFinder.findContours(grayImage, 10, (kinect.width*kinect.height)/2, 20, false);
+        
     }
     
 #ifdef USE_TWO_KINECTS
@@ -232,7 +233,7 @@ void ofApp::draw(){
     for(int offset = 0; offset < 5; offset++) {
         int i = (frameIndex + offset) % images.size();
         ofSetColor(255);
-        images[i].draw(200+x, ofGetHeight()-40, wScreen, hScreen);
+        //images[i].draw(200+x, ofGetHeight()-40, wScreen, hScreen);
         x += 40;
     }
 
@@ -263,24 +264,24 @@ void ofApp::draw(){
     stringstream reportStream;
     
     if(kinect.hasAccelControl()) {
-        reportStream << "accel is: " << ofToString(kinect.getMksAccel().x, 2) << " / "
-        << ofToString(kinect.getMksAccel().y, 2) << " / "
-        << ofToString(kinect.getMksAccel().z, 2) << endl;
+//        reportStream << "accel is: " << ofToString(kinect.getMksAccel().x, 2) << " / "
+//        << ofToString(kinect.getMksAccel().y, 2) << " / "
+//        << ofToString(kinect.getMksAccel().z, 2) << endl;
     } else {
-        reportStream << "Note: this is a newer Xbox Kinect or Kinect For Windows device," << endl
-        << "motor / led / accel controls are not currently supported" << endl << endl;
+//        reportStream << "Note: this is a newer Xbox Kinect or Kinect For Windows device," << endl
+//        << "motor / led / accel controls are not currently supported" << endl << endl;
     }
     
-    reportStream << "press p to switch between images and point cloud, rotate the point cloud with the mouse" << endl
-    << "using opencv threshold = " << bThreshWithOpenCV <<" (press spacebar)" << endl
-    << "set near threshold " << nearThreshold << " (press: + -)" << endl
-    << "set far threshold " << farThreshold << " (press: < >) num blobs found " << contourFinder.nBlobs
-    << ", fps: " << ofGetFrameRate() << endl
-    << "press c to close the connection and o to open it again, connection is: " << kinect.isConnected() << endl;
+//    reportStream << "press p to switch between images and point cloud, rotate the point cloud with the mouse" << endl
+//    << "using opencv threshold = " << bThreshWithOpenCV <<" (press spacebar)" << endl
+//    << "set near threshold " << nearThreshold << " (press: + -)" << endl
+//    << "set far threshold " << farThreshold << " (press: < >) num blobs found " << contourFinder.nBlobs
+//    << ", fps: " << ofGetFrameRate() << endl
+//    << "press c to close the connection and o to open it again, connection is: " << kinect.isConnected() << endl;
     
     if(kinect.hasCamTiltControl()) {
-        reportStream << "press UP and DOWN to change the tilt angle: " << angle << " degrees" << endl
-        << "press 1-5 & 0 to change the led mode" << endl;
+//        reportStream << "press UP and DOWN to change the tilt angle: " << angle << " degrees" << endl
+//        << "press 1-5 & 0 to change the led mode" << endl;
     }
     
     ofDrawBitmapString(reportStream.str(), 20, 652);
@@ -288,45 +289,92 @@ void ofApp::draw(){
 }
 
 void ofApp::drawPointCloud() {
-    int w = wScreen;
-    int h = hScreen;
+    int w = 640;
+    int h = 480;
     ofMesh mesh;
     int step=2, ptSize= 1;
+    int oldStep;
     float colorM=1;
-    mesh.setMode(OF_PRIMITIVE_LINES);
+    float oldColor;
+    bool shadowPlay = false;
+    int xD, yD;
+    mesh.setMode(OF_PRIMITIVE_LINE_LOOP);
+    for (int i = 0; i < contourFinder.nBlobs; i++){
+        //ofLog(OF_LOG_NOTICE, "X: " + ofToString(contourFinder.blobs[i].boundingRect.getCenter().x));
+        //ofLog(OF_LOG_NOTICE, "Y: " + ofToString(contourFinder.blobs[i].boundingRect.getCenter().y));
+        
+        
+        // draw over the centroid if the blob is a hole
+        
+        if(contourFinder.blobs[i].boundingRect.getCenter().x <= 80){
+            shadowPlay = true;
+            ofLog(OF_LOG_NOTICE, "YES ");
+        }
+        else {
+            shadowPlay = false;
+        }
+    }
+    
+    if(gamma1*100 < 0.8 && gamma1*100 > 0.6){
+        sequenceFPS = 6;
+        
+    }
+    else if(gamma1*100 < 0.6){
+        sequenceFPS = 11;
+        
+    }
+    else if(gamma1*100 > 0.8 && gamma1*100 < 1){
+        sequenceFPS = 4;
+        
+    }
+    else{
+        sequenceFPS = 7;
+    }
     
     
-//    if((beta1+beta2) > (alpha1+alpha2) && (beta1+beta2) > theta){
-//        step = 2;
-//        colorM = 25*beta1;
-//        ptSize = 4;
-//        mesh.setMode(OF_PRIMITIVE_TRIANGLE_FAN);
-//        ofLog(OF_LOG_NOTICE, "BETA");
-//    }
-//    if((alpha1+alpha2) > (beta1+beta2) && (alpha1+alpha2) > theta){
-//        step = 6;
-//        colorM = 50*alpha1;
-//        ptSize = 7;
-//        mesh.setMode(OF_PRIMITIVE_POINTS);
-//        ofLog(OF_LOG_NOTICE, "ALPHA");
-//    }
-//    if(theta > (alpha1+alpha2) && theta > (beta1+beta2)){
-//        step = 10;
-//        colorM = 64*theta;
-//        ptSize = 10;
-//        mesh.setMode(OF_PRIMITIVE_LINE_LOOP);
-//        ofLog(OF_LOG_NOTICE, "THETA");
-//    }
-            step = 10;
-            colorM = 64;
-            ptSize = 10;
-            mesh.setMode(OF_PRIMITIVE_LINE_LOOP);
+    if((beta1+beta2) > (alpha1+alpha2) && (beta1+beta2) > theta){
+        step = 3;
+        colorM = 30*beta1;
+        ptSize = 4;
+        mesh.setMode(OF_PRIMITIVE_TRIANGLE_FAN);
+        ofLog(OF_LOG_NOTICE, "BETA");
+    }
+    if((alpha1+alpha2) > (beta1+beta2) && (alpha1+alpha2) > theta){
+        step = 6;
+        colorM = 50*alpha1;
+        ptSize = 7;
+        mesh.setMode(OF_PRIMITIVE_POINTS);
+        ofLog(OF_LOG_NOTICE, "ALPHA");
+    }
+    if(theta > (alpha1+alpha2) && theta > (beta1+beta2)){
+        step = 10;
+        colorM = 64*theta;
+        ptSize = 10;
+        mesh.setMode(OF_PRIMITIVE_LINE_LOOP);
+        ofLog(OF_LOG_NOTICE, "THETA");
+    }
+    
+    oldStep =step;
+    oldColor = colorM;
+    
+    if(shadowPlay){
+        xD= 100;
+        yD= 100;
+        step = 1;
+        colorM = 1;
+    }
+    else {
+        xD = 0;
+        yD = 0;
+        step = oldStep;
+        colorM = oldColor;
+    }
     
    
     for(int y = 0; y < h; y += step) {
         for(int x = 0; x < w; x += step) {
-            if(kinect.getDistanceAt(x, y) > 0 && kinect.getDistanceAt(x, y) < 3000) {
-                //@Laura here we can check distance of performer
+            if(kinect.getDistanceAt(x, y) > 0 && kinect.getDistanceAt(x, y) < 2800) {
+                //here we can check distance of performer
 //                if(kinect.getDistanceAt(x, y) == 1000){
 //                    step = 2;
 //                    ofLog(OF_LOG_NOTICE, "Yo");
@@ -337,20 +385,22 @@ void ofApp::drawPointCloud() {
 //                    sender.sendMessage(m2, false);
 //                }
                 mesh.addColor(kinect.getColorAt(x,y)*colorM);
-                mesh.addVertex(kinect.getWorldCoordinateAt(x, y));
+                mesh.addVertex(kinect.getWorldCoordinateAt(x+xD, y+yD));
             }
         }
     }
-    //@Laura here I am getting mesh x,y,zverticies which we can check for boundaries
-    vector<ofVec3f> test = mesh.getVertices();
-    for(int i=0;i<test.size(); i++){
-        ofLog(OF_LOG_NOTICE, "V: " + ofToString(test[i]));
-    }
+    
+    
+    //here I am getting mesh x,y,zverticies which we can check for boundaries
+//    vector<ofVec3f> test = mesh.getVertices();
+//    for(int i=0;i<test.size(); i++){
+//        ofLog(OF_LOG_NOTICE, "V: " + ofToString(test[i]));
+//    }
     glPointSize(ptSize);
     ofPushMatrix();
     // the projected points are 'upside down' and 'backwards'
-    ofScale(1, -1, -1);
-    ofTranslate(0, 0, -1000); // center the points a bit
+    ofScale(-1, -1, -1);
+    ofTranslate(0, 0, -1500); // center the points a bit
     //ofTranslate(100, 100, 0);
     ofEnableDepthTest();
     mesh.drawVertices();
